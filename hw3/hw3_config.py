@@ -1,0 +1,5 @@
+NUM_TILE = 8
+NUM_EPI = 1
+EPSILON = 0.1
+ALPHA = 0.5/8
+GAMMA = 1
