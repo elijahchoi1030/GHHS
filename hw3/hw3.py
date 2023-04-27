@@ -1,53 +1,76 @@
+import argparse
 import gym
-import numpy as np
-from hw3_utils import featureVector, chooseAction, actionValue
+import matplotlib.pyplot as plt
+from hw3_utils import functionApproximation, saveData, loadData
 
 NUM_TILE = 8
-NUM_EPI = 500
-EPSILON = 0.1
-ALPHA = 0.01/8
+NUM_EPI = 1000
+EPSILON = 0
+ALPHAS = [0.01/8, 0.02/8, 0.05/8, 0.1/8, 0.2/8, 0.5/8]
 GAMMA = 1
+CONVERGE = 1E-6
 
-# render_mode = "rgb_array" : rgb array를 return하며 이를 plot할 수 있음. 빠름.
-# render_mode = "human"     : 자동으로 render()가 실행되어 pygame으로 보여줌. 느림. 
+parser = argparse.ArgumentParser()
+parser.add_argument('-r', action='store_true') 
+parser.add_argument('-n', action='store_true') 
+args = parser.parse_args() 
+
+if args.n:
+    with open(f"./datas.csv", 'w') as f:
+        f.write("")
+
+if args.r:
+    for ALPHA in ALPHAS:
+        ALPHA = 0.5/8
+        env = gym.make('MountainCar-v0', render_mode="human")
+        env.metadata["render_fps"] = 120
+        agent = functionApproximation(NUM_TILE, EPSILON, ALPHA, GAMMA, CONVERGE, env)
+        while True:
+
+            # Each ephisode
+            num_steps = 0
+            terminal = False
+            state, _ = env.reset()
+            action = agent.chooseAction(state)
+            while not terminal:
+                next_state, _, terminal, _, _ = env.step(action)
+                next_action = agent.chooseAction(next_state)
+                agent.updateWeight(state, action, next_state, next_action, terminal)
+                state, action = next_state, next_action
+                num_steps += 1
+            agent.steps_per_epi.append(num_steps)
+
+            if agent.epi in [10, 100, 1000]:
+                saveData(agent.weight, header=f"weight epi={agent.epi}&a=0.{ALPHA*80}/8")
+            
+            if agent.epi % 100 == 0:
+                print(agent.epi)
+
+            if agent.converge:
+                saveData(agent.weight, header=f"weight epi={agent.epi}&a=0.{ALPHA*80}/8")
+                break
+        print(f"The weight converged in runs of {agent.epi}.")
+        env.close()
+        saveData(agent.steps_per_epi, header=f"steps a=0.{ALPHA*80}/8")
+
+for i ,ALPHA in enumerate(ALPHAS):
+    plt.subplot(2, 3, i+1)
+    plt.plot(loadData(header=f"steps a=0.{ALPHA*80}/8"))
+    plt.yscale('log')
+    plt.title(f"steps a=0.{ALPHA*80}/8")
+# plt.show()
+
+
+
+ALPHA = ALPHAS[2]
 env = gym.make('MountainCar-v0', render_mode="human")
-env.metadata["render_fps"] = 120
-
-# weight = np.zeros(NUM_TILE*2*env.action_space.n)
-# weight = np.zeros(NUM_TILE*2+1)
-weight = np.zeros(NUM_TILE*2)
-steps_per_epi = []
-
-for _ in range(NUM_EPI):
-    # Each ephisode
-    num_steps = 0
+agent = functionApproximation(NUM_TILE, EPSILON, ALPHA, GAMMA, CONVERGE, env)
+agent.weight = loadData(header=f"weight epi=1969&a=0.0.2/8")
+for _ in range(10):
+    terminal = False
     state, _ = env.reset()
-    action = chooseAction(state, weight, env, epsilon=EPSILON)
-    while True:
-        next_state, reward, terminal, _, _ = env.step(action)
-        
-        if num_steps%300 == 2:
-            print(weight)
-            print(featureVector(state, action))
-            print(actionValue(next_state, next_action, weight))
-            print(actionValue(state, action, weight))
-            print(ALPHA*(reward + GAMMA*actionValue(next_state, next_action, weight) \
-                            - actionValue(state, action, weight))*featureVector(state, action))
-            print("CUT", num_steps, '\n')
-            # break
-        
-        if terminal:
-            # Assuming terminal reward is 0
-            weight += ALPHA*(0 - actionValue(state, action, weight))*featureVector(state, action)
-            break
-        next_action = chooseAction(next_state, weight, env, epsilon=EPSILON)
-        weight += ALPHA*(reward + GAMMA*actionValue(next_state, next_action, weight) \
-                        - actionValue(state, action, weight))*featureVector(state, action)
-        state, action = next_state, next_action
-        num_steps += 1
-        
-    steps_per_epi.append(num_steps)
-
+    while not terminal:
+        action = agent.chooseAction(state)
+        state, _, terminal, _, _ = env.step(action)
 env.close()
-
 
