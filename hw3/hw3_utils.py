@@ -3,12 +3,12 @@ import numpy as np
 from math import floor
 
 class functionApproximation:
-    def __init__(self, num_tile, epsilon, alpha, gamma, conv, env):
+    def __init__(self, num_tile, alpha, gamma, conv, env):
         self.len_weight = num_tile**4
         self.iht = IHT(self.len_weight)
+        self.iht.dictionary = loadData(header="iht")
         self.weight = np.zeros(self.len_weight)
         self.num_tile = num_tile
-        self.epsilon = epsilon
         self.alpha = alpha
         self.gamma = gamma
         self.randomAction = env.action_space.sample
@@ -21,29 +21,21 @@ class functionApproximation:
         self.conv = conv
 
     def featureVector(self, state, action):
-        projection = [self.num_tile*state[0]/self.pos_len, self.num_tile*state[1]/self.pos_len]
+        projection = [self.num_tile*state[0]/self.pos_len, self.num_tile*state[1]/self.vel_len]
         tile_idx = tiles(self.iht, self.num_tile, projection, [action])
         feature_vector = np.zeros(self.len_weight)
-        for i in range(len(tile_idx)):
-            feature_vector[512*i + tile_idx[i]] = 1
+        for idx in tile_idx:
+            feature_vector[idx] = 1
         return feature_vector
     
     def actionValue(self, state, action):
         return np.dot(self.weight, self.featureVector(state, action))
     
     def chooseAction(self, state):
-        '''
-            By epsilon-greedy choosing. 
-            Probability of e=0.9, exploitation.
-            Probability of e=0.1, exploration.
-        '''
-        if random.random() > self.epsilon:
-            action_val = []
-            for act in range(self.num_action):
-                action_val.append(self.actionValue(state, act))
-            return np.argmax(action_val)
-        else:
-            return self.randomAction()
+        action_val = []
+        for act in range(self.num_action):
+            action_val.append(self.actionValue(state, act))
+        return np.argmax(action_val)
         
     def updateWeight(self, state, action, next_state, next_action, terminal):
         if terminal:
@@ -52,11 +44,18 @@ class functionApproximation:
         else:
             delta_weight = (-1 + self.gamma*self.actionValue(next_state, next_action) \
                         - self.actionValue(state, action))*self.featureVector(state, action)
-        if np.sqrt(np.mean(delta_weight**2)) <= self.conv:
+        # if np.sqrt(np.mean(delta_weight**2)) <= self.conv:
+        #     self.converge = True
+        if self.epi == 2000:
             self.converge = True
         self.weight += self.alpha*delta_weight
     
 def saveData(item, header=""):
+    if header == "iht":
+        with open("./iht.txt", 'w') as f:
+            f.write(str(item))
+        return
+    
     with open("./datas.csv", 'r') as f:
         data = f.readlines()
     line = None
@@ -75,13 +74,24 @@ def saveData(item, header=""):
         for lin in data:
             f.write(lin)
 
-def loadData(header=""):
+def loadData(header="", find=False, header2=""):
+    if header == "iht":
+        with open("./iht.txt", 'r') as f:
+            data = f.read()
+        return eval(data)
+    
     with open("./datas.csv", 'r') as f:
         data = f.readlines()
-    for item in data:
+    for i, item in enumerate(data):
         item = item.strip().split(',')
-        if item[0] == header:
-            return np.array(item[1:]).astype(np.float)
+        if find == True:
+            if header in item[0] and header2 in item[0]:
+                line = i
+        else:
+            return np.array(item[1:]).astype(np.float32)
+    if line is None:
+        print("error occured!")
+    return np.array(data[line].strip().split(',')[1:]).astype(np.float32)
 
     
 
