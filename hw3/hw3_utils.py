@@ -1,4 +1,3 @@
-import random
 import numpy as np
 from math import floor
 
@@ -39,7 +38,7 @@ class functionApproximation:
         
     def updateWeight(self, state, action, next_state, next_action, terminal):
         if terminal:
-            delta_weight = (-1 - self.actionValue(state, action))*self.featureVector(state, action)
+            delta_weight = (0 - self.actionValue(state, action))*self.featureVector(state, action)
             self.epi += 1
         else:
             delta_weight = (-1 + self.gamma*self.actionValue(next_state, next_action) \
@@ -88,7 +87,8 @@ def loadData(header="", find=False, header2=""):
             if header in item[0] and header2 in item[0]:
                 line = i
         else:
-            return np.array(item[1:]).astype(np.float32)
+            if header == item[0]:
+                return np.array(item[1:]).astype(np.float32)
     if line is None:
         print("error occured!")
     return np.array(data[line].strip().split(',')[1:]).astype(np.float32)
