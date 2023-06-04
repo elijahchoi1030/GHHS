@@ -11,10 +11,10 @@ NUM_EPHISODE = 100000
 # Training
 env = gym.make('CartPole-v1', render_mode="rgb_array")
 agent = agentCartPole("Q Learning", discrete_size=(10, 10, 10, 10))
-terminated = False
 for eph in tqdm(range(NUM_EPHISODE)):
     state, _ = env.reset()
     action = agent.chooseAction(state)
+    terminated = False
     while not terminated:
         next_state, reward, terminated, _, _ = env.step(action)
         next_action = agent.chooseAction(next_state)

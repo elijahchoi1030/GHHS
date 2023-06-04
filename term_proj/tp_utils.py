@@ -17,7 +17,8 @@ class agentCartPole():
             self.lr = kwargs.get('lr', 0.01)
             self.discount_factor = kwargs.get('discount_factor', 1)
             self.discretizer = discretizer(self.discrete_size)
-            self.Q = np.zeros(self.discrete_size + (env.action_space.n,))
+            # self.Q = np.zeros(self.discrete_size + (env.action_space.n,))
+            self.Q = 100*np.ones(self.discrete_size + (env.action_space.n,))
 
     def _action_Q(self, state):
         env = gym.make('CartPole-v1', render_mode='rgb_array')
